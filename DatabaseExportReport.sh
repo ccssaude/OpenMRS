@@ -1,0 +1,1 @@
+mysqldump -uroot  openmrs reporting_report_design reporting_report_design_resource reporting_report_processor reporting_report_request serialized_object report_object > PEPFAR_MER3_1_Report_OpenMRS_20032020_1.11.6.sql
