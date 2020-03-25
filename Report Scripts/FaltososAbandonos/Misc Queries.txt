@@ -1,0 +1,13 @@
+select * , if(estado="Activo", if(DiasDepoisDataProximoLev<=30,"Faltoso","ABANDONO NAO NOTIFICADO"),estado) Outcome from 
+openmrs_reports.lista_faltososabandonos
+WHERE DiasDepoisDataProximoLev between 3 and 365 limit 900000000000;
+
+
+
+SELECT site ,  COUNT(*) FROM openmrs_reports.lista_faltososabandonos
+WHERE DiasDepoisDataProximoLev between 3 and 365
+GROUP BY site;
+
+
+
+SELECT *  FROM openmrs_reports.lista_faltososabandonos

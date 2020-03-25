@@ -1,0 +1,238 @@
+/*
+ @startDate & @endDate Representam o perido dos levantamentos de ARVs
+ */
+
+use openmrs;
+set @startDate := '2019-12-21 00:00:00';  
+set @endDate := '2020-01-21 00:00:00';
+
+SELECT DISTINCT
+    pid.identifier NID,
+    CONCAT(IFNULL(pn.given_name, ''),
+            ' ',
+            IFNULL(pn.middle_name, ''),
+            ' ',
+            IFNULL(pn.family_name, '')) AS 'NomeCompleto',
+    ROUND(DATEDIFF(@endDate, pe.birthdate) / 365) idade_actual,
+    pe.birthdate,
+    visita.data_levantamento,
+    regime.ultimo_regime AS regime_fila,
+    regime_levantamento.ultimo_regime AS regime_ficha_seguimento,
+    prox_lev.value_datetime AS prox_marcado,
+    dosagem.value_text as dosagem,
+    peso.peso
+FROM
+    (SELECT 
+        patient_id,
+            encounter_datetime data_levantamento,
+            location_id
+    FROM
+        encounter
+    WHERE
+        encounter_type = 18 AND voided = 0
+            AND encounter_datetime BETWEEN @startDate AND @endDate) visita
+        LEFT JOIN
+    patient_identifier pid ON pid.patient_id = visita.patient_id
+        AND pid.identifier_type = 2
+        LEFT JOIN
+    person_name pn ON pn.person_id = visita.patient_id
+        LEFT JOIN
+    person pe ON pe.person_id = visita.patient_id
+        INNER JOIN
+    (SELECT 
+        p.patient_id,
+            CASE o.value_coded
+                WHEN 1651 THEN 'AZT+3TC+NVP'
+                WHEN 6324 THEN 'TDF+3TC+EFV'
+                WHEN 1703 THEN 'AZT+3TC+EFV'
+                WHEN 6243 THEN 'TDF+3TC+NVP'
+                WHEN 6104 THEN 'ABC+3TC+EFV'
+                WHEN 23784 THEN 'TDF+3TC+DTG'
+                WHEN 21163 THEN 'AZT+3TC+LPV/r (2ª Linha)'
+                WHEN 23786 THEN 'ABC+3TC+DTG'
+                WHEN 1311 THEN 'ABC+3TC+LPV/r (2ª Linha)'
+                WHEN 6234 THEN 'ABC+TDF+LPV/r'
+                WHEN 1314 THEN 'AZT+3TC+LPV/r (2ª Linha)'
+                WHEN 6103 THEN 'D4T+3TC+LPV/r'
+                WHEN 23790 THEN 'TDF+3TC+LPV/r+RTV'
+                WHEN 6107 THEN 'TDF+AZT+3TC+LPV/r'
+                WHEN 23791 THEN 'TDF+3TC+ATV/r'
+                WHEN 23792 THEN 'ABC+3TC+ATV/r'
+                WHEN 23793 THEN 'AZT+3TC+ATV/r'
+                WHEN 23797 THEN 'ABC+3TC+DRV/r+RAL'
+                WHEN 6329 THEN 'TDF+3TC+RAL+DRV/r'
+                WHEN 23815 THEN 'AZT+3TC+DTG'
+                WHEN 23803 THEN 'AZT+3TC+RAL+DRV/r'
+                WHEN 23802 THEN 'AZT+3TC+DRV/r'
+                WHEN 6329 THEN 'TDF+3TC+RAL+DRV/r'
+                WHEN 23801 THEN 'AZT+3TC+RAL'
+                WHEN 23798 THEN '3TC+RAL+DRV/r'
+                WHEN 1313 THEN 'ABC+3TC+EFV (2ª Linha)'
+                WHEN 23799 THEN 'TDF+3TC+DTG (2ª Linha)'
+                WHEN 23800 THEN 'ABC+3TC+DTG (2ª Linha)'
+                WHEN 792 THEN 'D4T+3TC+NVP'
+                WHEN 1827 THEN 'D4T+3TC+EFV'
+                WHEN 6102 THEN 'D4T+3TC+ABC'
+                WHEN 6116 THEN 'AZT+3TC+ABC'
+                WHEN 6108 THEN 'TDF+3TC+LPV/r(2ª Linha)'
+                WHEN 6100 THEN 'AZT+3TC+LPV/r'
+                WHEN 6106 THEN 'ABC+3TC+LPV'
+                WHEN 6330 THEN 'AZT+3TC+RAL+DRV/r (3ª Linha)'
+                WHEN 6105 THEN 'ABC+3TC+NVP'
+                WHEN 6102 THEN 'D4T+3TC+ABC'
+                WHEN 6325 THEN 'D4T+3TC+ABC+LPV/r (2ª Linha)'
+                WHEN 6326 THEN 'AZT+3TC+ABC+LPV/r (2ª Linha)'
+                WHEN 6327 THEN 'D4T+3TC+ABC+EFV (2ª Linha)'
+                WHEN 6328 THEN 'AZT+3TC+ABC+EFV (2ª Linha)'
+                WHEN 6109 THEN 'AZT+DDI+LPV/r (2ª Linha)'
+                ELSE 'OUTRO'
+            END AS ultimo_regime,
+            e.encounter_datetime data_regime
+    FROM
+        obs o
+    INNER JOIN patient p ON o.person_id = p.patient_id
+    INNER JOIN encounter e ON e.patient_id = p.patient_id
+    WHERE
+        e.encounter_type = 18 AND e.voided = 0
+            AND encounter_datetime <= @endDate
+            AND p.voided = 0
+            AND o.obs_datetime = e.encounter_datetime
+            AND o.voided = 0
+            AND o.concept_id = 1088) regime ON regime.patient_id = visita.patient_id
+        AND regime.data_regime = visita.data_levantamento
+        LEFT JOIN
+    (SELECT 
+        p.patient_id,
+            o.value_coded,
+            CASE o.value_coded
+                WHEN 1651 THEN 'AZT+3TC+NVP'
+                WHEN 6324 THEN 'TDF+3TC+EFV'
+                WHEN 1703 THEN 'AZT+3TC+EFV'
+                WHEN 6243 THEN 'TDF+3TC+NVP'
+                WHEN 6104 THEN 'ABC+3TC+EFV'
+                WHEN 23784 THEN 'TDF+3TC+DTG'
+                WHEN 23786 THEN 'ABC+3TC+DTG'
+                WHEN 1311 THEN 'ABC+3TC+LPV/r (2ª Linha)'
+                WHEN 6234 THEN 'ABC+TDF+LPV/r'
+                WHEN 1314 THEN 'AZT+3TC+LPV/r (2ª Linha)'
+                WHEN 6103 THEN 'D4T+3TC+LPV/r'
+                WHEN 23790 THEN 'TDF+3TC+LPV/r+RTV'
+                WHEN 6107 THEN 'TDF+AZT+3TC+LPV/r'
+                WHEN 23791 THEN 'TDF+3TC+ATV/r'
+                WHEN 23792 THEN 'ABC+3TC+ATV/r'
+                WHEN 23793 THEN 'AZT+3TC+ATV/r'
+                WHEN 23797 THEN 'ABC+3TC+DRV/r+RAL'
+                WHEN 6329 THEN 'TDF+3TC+RAL+DRV/r'
+                WHEN 23815 THEN 'AZT+3TC+DTG'
+                WHEN 21163 THEN 'AZT+3TC+LPV/r (2ª Linha)'
+                WHEN 23803 THEN 'AZT+3TC+RAL+DRV/r'
+                WHEN 23802 THEN 'AZT+3TC+DRV/r'
+                WHEN 6329 THEN 'TDF+3TC+RAL+DRV/r'
+                WHEN 23801 THEN 'AZT+3TC+RAL'
+                WHEN 23798 THEN '3TC+RAL+DRV/r'
+                WHEN 1313 THEN 'ABC+3TC+EFV (2ª Linha)'
+                WHEN 23799 THEN 'TDF+3TC+DTG (2ª Linha)'
+                WHEN 23800 THEN 'ABC+3TC+DTG (2ª Linha)'
+                WHEN 792 THEN 'D4T+3TC+NVP'
+                WHEN 1827 THEN 'D4T+3TC+EFV'
+                WHEN 6102 THEN 'D4T+3TC+ABC'
+                WHEN 6116 THEN 'AZT+3TC+ABC'
+                WHEN 6108 THEN 'TDF+3TC+LPV/r(2ª Linha)'
+                WHEN 6100 THEN 'AZT+3TC+LPV/r'
+                WHEN 6106 THEN 'ABC+3TC+LPV'
+                WHEN 6330 THEN 'AZT+3TC+RAL+DRV/r (3ª Linha)'
+                WHEN 6105 THEN 'ABC+3TC+NVP'
+                WHEN 6102 THEN 'D4T+3TC+ABC'
+                WHEN 6325 THEN 'D4T+3TC+ABC+LPV/r (2ª Linha)'
+                WHEN 6326 THEN 'AZT+3TC+ABC+LPV/r (2ª Linha)'
+                WHEN 6327 THEN 'D4T+3TC+ABC+EFV (2ª Linha)'
+                WHEN 6328 THEN 'AZT+3TC+ABC+EFV (2ª Linha)'
+                WHEN 6109 THEN 'AZT+DDI+LPV/r (2ª Linha)'
+                ELSE 'OUTRO'
+            END AS ultimo_regime,
+            e.encounter_datetime data_regime
+    FROM
+        obs o
+    INNER JOIN patient p ON o.person_id = p.patient_id
+    INNER JOIN encounter e ON e.patient_id = p.patient_id
+    WHERE
+           e.form_id = 163 
+           AND e.voided = 0
+            AND encounter_datetime <= @endDate
+            AND p.voided = 0
+            AND o.obs_datetime = e.encounter_datetime
+            AND o.voided = 0
+            AND o.concept_id = 1087) regime_levantamento ON regime_levantamento.patient_id = visita.patient_id
+        AND regime_levantamento.data_regime = visita.data_levantamento
+        LEFT JOIN
+    (SELECT DISTINCT
+            enc.obs_encounter_id,
+            enc.obs_obs_datetime,
+            enc.encounter_datetime,
+            enc.value_text,
+            enc.patient_id
+    FROM
+        (SELECT 
+        o.encounter_id,
+            p.patient_id,
+            o.obs_datetime,
+            MAX(o.date_created) AS max_date_created
+    FROM
+        obs o
+    INNER JOIN patient p ON o.person_id = p.patient_id
+    WHERE
+        o.concept_id = 1711
+    GROUP BY obs_datetime,p.patient_id) lat
+    INNER JOIN (SELECT 
+        o.encounter_id AS obs_encounter_id,
+            o.obs_datetime AS obs_obs_datetime,
+            e.encounter_datetime,
+            o.date_created,
+            value_text,
+            p.patient_id
+    FROM
+        obs o
+    INNER JOIN patient p ON o.person_id = p.patient_id
+    INNER JOIN encounter e ON e.patient_id = p.patient_id
+    WHERE
+        o.obs_datetime = e.encounter_datetime
+            AND o.voided = 0
+            AND e.encounter_type = 18
+            AND e.voided = 0
+            AND o.concept_id = 1711) enc ON enc.date_created = lat.max_date_created
+        /*AND enc.obs_encounter_id = lat.encounter_id*/) dosagem ON dosagem.encounter_datetime = visita.data_levantamento
+        AND dosagem.patient_id = regime.patient_id
+        LEFT JOIN
+    (SELECT 
+        o.value_datetime, p.patient_id, e.encounter_datetime
+    FROM
+        obs o
+    INNER JOIN patient p ON o.person_id = p.patient_id
+    INNER JOIN encounter e ON e.patient_id = p.patient_id
+    WHERE
+        e.encounter_type = 18 AND e.voided = 0
+            AND encounter_datetime <= @endDate
+            AND p.voided = 0
+            AND o.obs_datetime = e.encounter_datetime
+            AND o.voided = 0
+            AND o.concept_id = 5096) prox_lev ON prox_lev.encounter_datetime = regime.data_regime
+        AND prox_lev.patient_id = regime.patient_id
+        LEFT JOIN
+    (SELECT 
+        p.patient_id, o.obs_datetime, o.value_numeric AS peso
+    FROM
+        patient p
+    INNER JOIN encounter e ON p.patient_id = e.patient_id
+    INNER JOIN obs o ON e.encounter_id = o.encounter_id
+    WHERE
+		e.form_id =163
+        and p.voided = 0 
+        AND e.voided = 0
+        AND o.voided = 0
+        AND o.concept_id = 5089) peso ON peso.patient_id = visita.patient_id
+        AND peso.obs_datetime = visita.data_levantamento
+WHERE
+    ROUND(DATEDIFF(@endDate, pe.birthdate) / 365) BETWEEN 0 AND 14
+GROUP BY NID , data_levantamento , regime_fila 
+ORDER BY NID , data_levantamento DESC
+
