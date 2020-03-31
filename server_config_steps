@@ -1,0 +1,66 @@
+
+# instalar o programa unzip 
+
+root@openmrs:/hdd/openmrs# apt-get install unzip
+
+# atribuir acesso a o directorio HDD a ccsadmin
+root@openmrs:/home/ccsadmin# chown -R ccsadmin  /hdd/* 
+
+
+Configuracao do Tomcat7 
+Conectar o flash no servidor 
+
+Identificar o device associado ao flash
+root@ccsadmin:#  fdisk  -l
+
+Criar uma pasta para fazer o mount do flash 
+root@ccsadmin:#  mkdir /media/usb
+root@ccsadmin:#  mount mkdir /dev/sdc1  /media/usb
+
+aceder o flash 
+root@ccsadmin:#  cd /media/usb
+
+Extrair os ficheiros do tomcat7 para /usr/local
+root@ccsadmin:/media/usb#   tar –xzvf apache-tomcat-7.0.103.tar.gz /usr/local/
+root@ccsadmin:/media/usb#   mv /usr/local/apache-tomcat-7.0.103 /usr/local/tomcat7
+
+# Copiar o ficheiro de configutracao do tomcat
+root@ccsadmin:/media/usb#   cp setenv.sh /usr/local/tomcat7
+
+# Copiar o ficheiro tomcat7.sh ( script de inicializacao automatica do tomcar ) para  /etc/init.d/
+root@ccsadmin:/media/usb# cp tomcat7.sh /etc/init.d/tomcat7
+
+# Configurar o server para inicializar tomcat7 durante o boot
+root@ccsadmin:/media/usb# update-rc.d tomcat7 defaults
+
+
+## SCripts de Configuracao openmrs
+
+# Criar o directorio  /root/.OpenMRS
+root@openmrs:/media/usb# mkdir /root/.OpenMRS
+root@openmrs:/hdd/openmrs# tar -xzvf openmrs_config.tar.gz 
+root@openmrs:/hdd/openmrs# cd config/
+root@openmrs:/media/usb# cp -r *  /root/.OpenMRS/
+root@openmrs:/media/usb# ls /root/.OpenMRS/
+
+
+##########  Instalacao e configuracao  MySQL server
+root@openmrs:/media/usb# sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu trusty universe'
+root@openmrs:/media/usb#  sudo apt-get update
+root@openmrs:/media/usb#  sudo apt install mysql-server-5.6 mysql-client-5.6
+
+Atencao: o password do root deve ser 'password'
+
+root@openmrs:/media/usb#  mv /etc/mysql/my.cnf.fallback  /etc/mysql/my.cnf
+root@openmrs:/media/usb#  cp my.cnf  /etc/mysql/my.cnf
+
+# Configurar o MySQL Server  para inicializar  durante o boot
+root@ccsadmin:/media/usb# update-rc.d tomcat7 defaults
+
+# Criacao do user esaude e atribuicao de previlegios
+
+mysql> create user 'esaude'@'%';
+mysql> set password for 'esaude'@'%' = password('esaude');
+mysql> create database openmrs;
+mysql> grant all privileges on openmrs.* to 'esaude'@'%';
+mysql> flush privileges;
