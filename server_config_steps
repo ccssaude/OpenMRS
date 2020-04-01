@@ -1,66 +1,176 @@
-
-# instalar o programa unzip 
-
-root@openmrs:/hdd/openmrs# apt-get install unzip
-
-# atribuir acesso a o directorio HDD a ccsadmin
-root@openmrs:/home/ccsadmin# chown -R ccsadmin  /hdd/* 
+###################### Configuracao do sistema de Armazenamento RAID1  ################################
+Passo 1:  Ligue o servidor e acesse a BIOS atraves da tecla F2
+# Va para opcao RAID --> Device Utility -->  Convert to RAID capable 
+# e selecione os 2 discos 1TB HDD ( nao selecione o disco SSD pois sera nele onde se vai instalar o SO)
 
 
-Configuracao do Tomcat7 
-Conectar o flash no servidor 
+ depos de gravar vai para Opcao configuration Management -> create Virtual Disk --> Skip 
+ # Seleciona as seguintes configuracoes
+ Select RAID Level ........................... RAID1
+ selec physiscal Disks ->> Marcar os dois discos HDD 
+
+ * physical Disk HDD, SATA,931GB, READY
+ * physical Disk HDD, SATA,931GB, READY
+
+######################### Configuracao da Particao do  disco HDD         #################################
+# O sitema foi instalado no disco SSD por ser mais eficiente ,no entanto, o disco HDD configurado em RAID0 deve
+  ter a particao montada num directorio para ser acessivel no sistema ested irectorio sera padronizao e deve ser /hdd 
+  (devemos criar manualmente esta dir atraves do comando#  mkdir /hdd)
+
+# Devemos formatar a  particao do disco HDD e montar no directorio /hdd  seguindo o seguinte procedimento:
+ccsadmin@openmrs:~$  sudo su
+root@openmrs:/home/ccsadmin#  mkdir  /hdd
+
+# atribuir acesso ao directorio /hdd ao user  ccsadmin
+root@openmrs:/home/ccsadmin# chown -R ccsadmin  /hdd*
+root@openmrs:/home/ccsadmin# mkdir -p /hdd/openmrs/backups
+
+# Identifique o nome da particao atraves do comando fdisk -l (deve ter aprox 1 TB)
+root@ccsadmin:#   fdisk -l 
+
+# Deve-se formatar a particao identificada ( neste SOP a particao e /dev/sdb1)
+
+# Formate a particao 
+root@ccsadmin:#   mkfs.ext4 /dev/sdb1 
+
+# Faca  mount da particao
+root@ccsadmin:#  mount /dev/sdb1  /hdd
+
+# Para a particao estar disponivel sempre que o server reiniciar adicionamos uma linha no file /etc/fstab
+# Make an entry in /etc/fstab file for permanent mount at boot time.
+
+root@ccsadmin:# nano /etc/fstab 
+## adicionar esta linha /dev/sdb1	/data	ext4	defaults     0   0
+
+
+
+######################### Configuracao de Java, Tomcat7, MySQL, PostgreSQL       #################################
+#  Deve-se copiar os ficheiros de instalacao e configuracao para o flash (openmrs_config.tar.gz)
+
+# Criar uma pasta para fazer o mount do flash 
+root@ccsadmin:#  mkdir /media/usb
 
 Identificar o device associado ao flash
 root@ccsadmin:#  fdisk  -l
+-- identificar o device com base no tamanho (/dev/sdc1)
 
-Criar uma pasta para fazer o mount do flash 
-root@ccsadmin:#  mkdir /media/usb
-root@ccsadmin:#  mount mkdir /dev/sdc1  /media/usb
+# Fazer o mount 
+root@ccsadmin:#  mount  /dev/sdc1  /media/usb
 
-aceder o flash 
-root@ccsadmin:#  cd /media/usb
+# aceder o flash 
+root@ccsadmin:#  cd /media/usb/openmrs_config 
+
+
+
+###################### Instalacao java 8 oracle               ###################### 
+root@openmrs:/media/usb/openmrs_config#  cp jdk-8u5-linux-x64.tar.gz   /opt/
+root@openmrs:/media/usb/openmrs_config#  cd /opt/ 
+root@ccsadmin:/opt#  tar -zxf  jdk-8u5-linux-x64.tar.gz && mv jdk1.8.0_05 jdk8
+root@ccsadmin:/opt#  update-alternatives --install /usr/bin/java java /opt/jdk8/bin/java 100
+root@ccsadmin:/opt#  update-alternatives --install /usr/bin/javac javac /opt/jdk8/bin/javac 100
+root@ccsadmin:/opt#  cd /media/usb/openmrs_config
+
+######################   Configuracao do Tomcat7              ###################### 
 
 Extrair os ficheiros do tomcat7 para /usr/local
-root@ccsadmin:/media/usb#   tar –xzvf apache-tomcat-7.0.103.tar.gz /usr/local/
-root@ccsadmin:/media/usb#   mv /usr/local/apache-tomcat-7.0.103 /usr/local/tomcat7
+root@openmrs:/media/usb/openmrs_config#  cp apache-tomcat-7.0.103.tar.gz /usr/local/
+root@openmrs:/media/usb/openmrs_config#  cd  /usr/local/
+root@openmrs:/media/usb/openmrs_config#  tar -xzf apache-tomcat-7.0.103.tar.gz
+root@openmrs:/media/usb/openmrs_config#  mv apache-tomcat-7.0.103  tomcat7
+root@openmrs:/media/usb/openmrs_config#  cd /media/usb/openmrs_config
 
 # Copiar o ficheiro de configutracao do tomcat
-root@ccsadmin:/media/usb#   cp setenv.sh /usr/local/tomcat7
+root@openmrs:/media/usb/openmrs_config#   cp setenv.sh /usr/local/tomcat7/bin
+root@openmrs:/media/usb/openmrs_config#  chmod 777 /usr/local/tomcat7/bin/setenv.sh
 
 # Copiar o ficheiro tomcat7.sh ( script de inicializacao automatica do tomcar ) para  /etc/init.d/
-root@ccsadmin:/media/usb# cp tomcat7.sh /etc/init.d/tomcat7
+root@openmrs:/media/usb/openmrs_config# cp tomcat7.sh /etc/init.d/tomcat7
 
 # Configurar o server para inicializar tomcat7 durante o boot
-root@ccsadmin:/media/usb# update-rc.d tomcat7 defaults
+root@openmrs:/media/usb/openmrs_config# update-rc.d tomcat7 defaults
 
 
-## SCripts de Configuracao openmrs
+######################   Configuracao OpenMRS           ######################
 
 # Criar o directorio  /root/.OpenMRS
-root@openmrs:/media/usb# mkdir /root/.OpenMRS
-root@openmrs:/hdd/openmrs# tar -xzvf openmrs_config.tar.gz 
-root@openmrs:/hdd/openmrs# cd config/
-root@openmrs:/media/usb# cp -r *  /root/.OpenMRS/
-root@openmrs:/media/usb# ls /root/.OpenMRS/
-
+root@openmrs:/media/usb/openmrs_config# mkdir /root/.OpenMRS
+root@openmrs:/media/usb/openmrs_config# cd .OpenMRS
+oot@openmrs:/media/usb/openmrs_config/.OpenMRS#  cp -r *  /root/.OpenMRS/
+root@openmrs:/media/usb/openmrs_config# cd .. 
+root@openmrs:/media/usb/openmrs_config#  cp openmrs.war /usr/local/tomcat7/webapps
 
 ##########  Instalacao e configuracao  MySQL server
-root@openmrs:/media/usb# sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu trusty universe'
-root@openmrs:/media/usb#  sudo apt-get update
-root@openmrs:/media/usb#  sudo apt install mysql-server-5.6 mysql-client-5.6
+root@openmrs:/media/usb/openmrs_config#  add-apt-repository 'deb http://archive.ubuntu.com/ubuntu trusty universe'
+root@openmrs:/media/usb/openmrs_config#   apt-get update &&  apt install -y mysql-server-5.6 mysql-client-5.6
+
 
 Atencao: o password do root deve ser 'password'
 
-root@openmrs:/media/usb#  mv /etc/mysql/my.cnf.fallback  /etc/mysql/my.cnf
-root@openmrs:/media/usb#  cp my.cnf  /etc/mysql/my.cnf
+root@openmrs:/media/usb/openmrs_config#  mv /etc/mysql/my.cnf.fallback  /etc/mysql/my.cnf
+root@openmrs:/media/usb/openmrs_config#  cp my.cnf  /etc/mysql/my.cnf
 
 # Configurar o MySQL Server  para inicializar  durante o boot
-root@ccsadmin:/media/usb# update-rc.d tomcat7 defaults
+root@openmrs:/media/usb/openmrs_config# update-rc.d mysql defaults
 
 # Criacao do user esaude e atribuicao de previlegios
+root@openmrs:/media/usb/openmrs_config#  service mysql start
+root@openmrs:/media/usb/openmrs_config#  mysql -uroot -ppassword
+
 
 mysql> create user 'esaude'@'%';
 mysql> set password for 'esaude'@'%' = password('esaude');
 mysql> create database openmrs;
 mysql> grant all privileges on openmrs.* to 'esaude'@'%';
 mysql> flush privileges;
+mysql>  exit;
+
+
+######################   Configuracao PostgreSQL           ######################
+
+root@openmrs:/media/usb/openmrs_config##  add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" 
+root@openmrs:/media/usb/openmrs_config##  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -  
+root@openmrs:/media/usb/openmrs_config##  apt-get update   &&   apt-get install -y  postgresql-9.6
+
+
+
+###### configurar o password para do user postgres (password e' postgres)
+
+root@openmrs:/media/usb/openmrs_config##  su - postgres  
+root@openmrs:/media/usb/openmrs_config##  psql
+postgres=# alter user postgres with password 'postgres';
+postgres=# \q    
+postgres@openmrs:~$ exit
+
+#### configurar parametros de conexao para o postgres
+
+pico /etc/postgresql/9.6/main/postgresql.conf
+
+# Mudar a linha
+#listen_addresses = 'localhost' para
+listen_addresses = '*'
+
+# Aceitar conexao de qualquer PC na subrede  ao PostgreSQL
+pico /etc/postgresql/9.6/main/pg_hba.conf  
+
+# adicionar a linha 
+host    all             all             192.168.100.0/24        md5
+# por baixo de # IPv4 local connections:
+
+# Configurar server  para inicializar PostgreSQL durante o boot
+
+root@openmrs:/media/usb/openmrs_config##  update-rc.d postgresql defaults
+
+
+
+
+######################   Configuracao Backups local           ######################
+
+# mudar o nome da variavel us_name no ficheiro databasedump.sh
+
+root@openmrs:/media/usb/openmrs_config# pico databasedump.sh 
+
+root@openmrs:/media/usb/openmrs_config##  cp databasedump.sh   /root/
+root@openmrs:/media/usb/openmrs_config##  cp databasedump.sh   /root/
+
+#install new cron file
+root@openmrs:/media/usb/openmrs_config##  crontab mycron
