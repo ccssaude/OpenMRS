@@ -1,1 +1,4 @@
-mysqldump -uroot  openmrs reporting_report_design reporting_report_design_resource reporting_report_processor reporting_report_request serialized_object report_object > PEPFAR_MER3_1_Report_OpenMRS_20032020_1.11.6.sql
+mysqldump -uroot  openmrs reporting_report_design reporting_report_design_resource reporting_report_processor reporting_report_request serialized_object report_object > pepfar_mer3_1_openmrs_06042020.sql
+
+### Xipamanine DB
+mysqldump -uroot  reports reporting_report_design reporting_report_design_resource reporting_report_processor reporting_report_request serialized_object report_object > pepfar_mer3_1_openmrs_06042020.sql
