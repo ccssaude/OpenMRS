@@ -3,7 +3,6 @@ Passo 1:  Ligue o servidor e acesse a BIOS atraves da tecla F2
 # Va para opcao RAID --> Device Utility -->  Convert to RAID capable 
 # e selecione os 2 discos 1TB HDD ( nao selecione o disco SSD pois sera nele onde se vai instalar o SO)
 
-
  depos de gravar vai para Opcao configuration Management -> create Virtual Disk --> Skip 
  # Seleciona as seguintes configuracoes
  Select RAID Level ........................... RAID1
